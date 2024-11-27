@@ -2,6 +2,9 @@ import streamlit as st
 import requests
 import json
 import traceback
+import logging
+
+logging.basicConfig(level=logging.DEBUG)
 
 # Show title and description.
 st.title("💬 Chatbot with Ollama Llama3")
@@ -25,7 +28,7 @@ if prompt := st.chat_input("메시지를 입력하세요"):
     with st.chat_message("user"):
         st.markdown(prompt)
 
-    print(st.session_state.messages)
+    logging.info(st.session_state.messages)
 
     # Ollama API 호출을 위한 페이로드 준비
     payload = {
@@ -54,7 +57,7 @@ if prompt := st.chat_input("메시지를 입력하세요"):
 
                     json_data = json.loads(decode_data)
 
-                    print(json_data)
+                    logging.debug(json_data)
 
                     if json_data.get('done', True):
                         break
@@ -68,7 +71,7 @@ if prompt := st.chat_input("메시지를 입력하세요"):
             response_placeholder.markdown(full_response)
 
         except Exception as e:
-            traceback.print_exc()
+            logging.error(traceback.format_exc())
             st.error(f"API 호출 중 오류 발생: {e}")
 
     # 어시스턴트 메시지 추가
