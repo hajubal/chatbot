@@ -1,56 +1,75 @@
 import streamlit as st
-from openai import OpenAI
+import requests
+import json
+import traceback
 
 # Show title and description.
-st.title("💬 Chatbot")
-st.write(
-    "This is a simple chatbot that uses OpenAI's GPT-3.5 model to generate responses. "
-    "To use this app, you need to provide an OpenAI API key, which you can get [here](https://platform.openai.com/account/api-keys). "
-    "You can also learn how to build this app step by step by [following our tutorial](https://docs.streamlit.io/develop/tutorials/llms/build-conversational-apps)."
-)
+st.title("💬 Chatbot with Ollama Llama3")
 
-# Ask user for their OpenAI API key via `st.text_input`.
-# Alternatively, you can store the API key in `./.streamlit/secrets.toml` and access it
-# via `st.secrets`, see https://docs.streamlit.io/develop/concepts/connections/secrets-management
-openai_api_key = st.text_input("OpenAI API Key", type="password")
-if not openai_api_key:
-    st.info("Please add your OpenAI API key to continue.", icon="🗝️")
-else:
+# Ollama 서버 설정
+OLLAMA_API_URL = "http://localhost:11434/api/chat"
 
-    # Create an OpenAI client.
-    client = OpenAI(api_key=openai_api_key)
+# 세션 상태 초기화
+if "messages" not in st.session_state:
+    st.session_state.messages = []
 
-    # Create a session state variable to store the chat messages. This ensures that the
-    # messages persist across reruns.
-    if "messages" not in st.session_state:
-        st.session_state.messages = []
+# 기존 메시지 표시
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
 
-    # Display the existing chat messages via `st.chat_message`.
-    for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
+# 채팅 입력 처리
+if prompt := st.chat_input("메시지를 입력하세요"):
+    # 사용자 메시지 추가
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    with st.chat_message("user"):
+        st.markdown(prompt)
 
-    # Create a chat input field to allow the user to enter a message. This will display
-    # automatically at the bottom of the page.
-    if prompt := st.chat_input("What is up?"):
+    print(st.session_state.messages)
 
-        # Store and display the current prompt.
-        st.session_state.messages.append({"role": "user", "content": prompt})
-        with st.chat_message("user"):
-            st.markdown(prompt)
+    # Ollama API 호출을 위한 페이로드 준비
+    payload = {
+        "model": "llama3.1",
+        "messages": st.session_state.messages,
+        "stream": True
+    }
 
-        # Generate a response using the OpenAI API.
-        stream = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": m["role"], "content": m["content"]}
-                for m in st.session_state.messages
-            ],
-            stream=True,
-        )
+    # Ollama API 호출
+    with st.chat_message("assistant"):
+        # 스트리밍 응답 처리
+        response_placeholder = st.empty()
+        full_response = ""
 
-        # Stream the response to the chat using `st.write_stream`, then store it in 
-        # session state.
-        with st.chat_message("assistant"):
-            response = st.write_stream(stream)
-        st.session_state.messages.append({"role": "assistant", "content": response})
+        try:
+            response = requests.post(
+                OLLAMA_API_URL,
+                json=payload,
+                stream=True
+            )
+
+            for line in response.iter_lines():
+                if line:
+                    # JSON 디코딩
+                    decode_data = line.decode('utf-8')
+
+                    json_data = json.loads(decode_data)
+
+                    print(json_data)
+
+                    if json_data.get('done', True):
+                        break
+
+                    if 'message' in json_data:
+                        chunk = json_data['message']
+                        full_response += chunk['content']
+                        response_placeholder.markdown(full_response + "▌")
+
+            # 최종 응답 표시
+            response_placeholder.markdown(full_response)
+
+        except Exception as e:
+            traceback.print_exc()
+            st.error(f"API 호출 중 오류 발생: {e}")
+
+    # 어시스턴트 메시지 추가
+    st.session_state.messages.append({"role": "assistant", "content": full_response})
