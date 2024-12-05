@@ -10,7 +10,7 @@ logging.basicConfig(level=logging.DEBUG)
 st.title("💬 Chatbot with Ollama Llama3")
 
 # Ollama 서버 설정
-OLLAMA_API_URL = "http://localhost:11434/api/chat"
+OLLAMA_API_URL = "http://localhost:8080/api/chat"
 
 # 세션 상태 초기화
 if "messages" not in st.session_state:
