@@ -40,7 +40,7 @@ class OllamaEncryptChatApp:
         #     ]
         # }
 
-        logging.info(st.session_state.messages)
+        logging.info(f"st.session_state.messages: {st.session_state.messages}")
 
         payload = {
             "model": "llama3.1",
@@ -48,8 +48,13 @@ class OllamaEncryptChatApp:
             "stream": True
         }
 
-        # encrypted_payload = self.crypto.encrypt(payload)
-        encrypted_payload = payload
+        original_str = json.dumps(payload)
+
+        logging.info(f"Request original_str: {original_str}")
+
+        # 암호화
+        encrypted_payload = self.crypto.encrypt(original_str)
+        # encrypted_payload = payload
 
         # Spring Gateway API 호출
         with st.chat_message("assistant"):
@@ -60,7 +65,7 @@ class OllamaEncryptChatApp:
                 # 암호화된 데이터 전송
                 response = requests.post(
                     f"{self.GATEWAY_API_URL}",
-                    json=encrypted_payload,
+                    data=encrypted_payload,
                     stream=True
                 )
 
