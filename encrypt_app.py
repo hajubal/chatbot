@@ -7,7 +7,13 @@ import time
 
 from util.CryptoUtil import CryptoUtil
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.ERROR)
+
+log = logging.getLogger()
+log.setLevel(logging.ERROR)
+
+timeLog = logging.getLogger("timeLogger")
+timeLog.setLevel(logging.INFO)
 
 
 class OllamaEncryptChatApp:
@@ -40,7 +46,7 @@ class OllamaEncryptChatApp:
         #     ]
         # }
 
-        logging.info(f"st.session_state.messages: {st.session_state.messages}")
+        log.info(f"st.session_state.messages: {st.session_state.messages}")
 
         payload = {
             "model": "llama3.1",
@@ -50,7 +56,7 @@ class OllamaEncryptChatApp:
 
         original_str = json.dumps(payload)
 
-        logging.info(f"Request original_str: {original_str}")
+        log.info(f"Request original_str: {original_str}")
 
         # 암호화
         encrypted_payload = self.crypto.encrypt(original_str)
@@ -74,23 +80,23 @@ class OllamaEncryptChatApp:
                         # JSON 디코딩
                         decode_data = line.decode('utf-8')
 
-                        logging.info(f"decode_data: {decode_data}")
+                        log.info(f"decode_data: {decode_data}")
 
                         if self.isEncrypted:
 
-                            start = time.time()
+                            start = time.time_ns()
 
                             decrypted_response = self.crypto.decrypt(decode_data)
 
-                            end = time.time()
+                            end = time.time_ns()
 
-                            logging.debug(f"Decrypted time(ms): {(end - start) / 1000}")
+                            timeLog.info(f"Decrypted time(ms): {(end - start) / 1000000}, content length: {len(decode_data)}")
                         else:
                             decrypted_response = decode_data
 
                         json_data = json.loads(decrypted_response)
 
-                        logging.debug(f"Response data: {json_data}")
+                        log.debug(f"Response data: {json_data}")
 
                         if json_data.get('done', True):
                             break
